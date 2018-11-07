@@ -1,3 +1,5 @@
+#include <utility>
+
 //
 // Created by Thomas Milas on 11/1/18.
 //
@@ -6,7 +8,16 @@
 
 using namespace std;
 
-void Vehicle::update(double x, double y, double yaw, vector<double> &prev_x, vector<double> &prev_y, double last_s, double last_d, Map &map) {
+void Vehicle::update(double x, double y, double yaw, vector<double> &prev_x, vector<double> &prev_y, double last_s, double last_d, Map &map, vector<vector<double>> sensor_fusion) {
+    m_x = x;
+    m_y = y;
+    m_yaw = yaw;
+    m_sensor_fusion = std::move(sensor_fusion);
+
+    m_state.process();
+
+    cout << "using lane: " << m_lane << endl;
+
     vector<double> spline_x;
     vector<double> spline_y;
 
@@ -35,7 +46,7 @@ void Vehicle::update(double x, double y, double yaw, vector<double> &prev_x, vec
     spline_x.push_back(ref_x);
     spline_y.push_back(ref_y);
 
-    auto d = 2 + lane * 4;
+    auto d = 2 + m_lane * 4;
     double wp_s = map.s[NextWaypoint(x, y, deg2rad(yaw), map.x, map.y)];
     auto xy = getXY(wp_s, d, map.s, map.x, map.y);
 
@@ -65,7 +76,7 @@ void Vehicle::update(double x, double y, double yaw, vector<double> &prev_x, vec
     auto target_distance = sqrt(pow(ref_x - target_x, 2) + pow(ref_y - target_y, 2));
 
 
-    auto points_ahead = static_cast<int>(target_distance / (.02 * target_velocity / 2.24));
+    auto points_ahead = static_cast<int>(target_distance / (.02 * m_target_velocity / 2.24));
     auto point_interval = target_distance / points_ahead;
     m_trajectory.setPointsAhead(points_ahead);
     while (!m_trajectory.is_full()) {
@@ -76,5 +87,34 @@ void Vehicle::update(double x, double y, double yaw, vector<double> &prev_x, vec
 }
 
 void Vehicle::keepLane() {
+    cout << "running state keeping lane" << endl;
+    auto lane = m_planner.determineBestTrajectory(m_sensor_fusion, m_x, m_y);
+    auto delta = lane - m_lane;
+    if (delta == 1) {
+        m_state.fire(ChangeLaneRight);
+    } else if (delta == -1) {
+        m_state.fire(ChangeLaneLeft);
+    }
+}
+
+void Vehicle::changeLaneLeft() {
+    cout << "running state changing left" << endl;
 
 }
+
+void Vehicle::changeLaneRight() {
+    cout << "running state changing right" << endl;
+
+}
+
+void Vehicle::changeLeftEntry() {
+    cout << "running entry of change left state" << endl;
+    m_lane--;
+}
+
+void Vehicle::changeRightEntry() {
+    cout << "running entry of change right state" << endl;
+    m_lane++;
+}
+
+

@@ -11,6 +11,7 @@
 #include "utility.h"
 #include "spline.h"
 #include "unordered_map"
+#include "behavior-planner.h"
 
 
 struct Point {
@@ -55,11 +56,11 @@ public:
     std::vector<double> dx;
     std::vector<double> dy;
     std::unordered_map<double, int> m_map_s;
-    Map(std::vector<double> x,
-        std::vector<double> y,
-        std::vector<double> s,
-        std::vector<double> dx,
-        std::vector<double> dy) : x(x), y(y), s(s), dx(dx), dy(dy) {
+    Map(std::vector<double> &x,
+        std::vector<double> &y,
+        std::vector<double> &s,
+        std::vector<double> &dx,
+        std::vector<double> &dy) : x(x), y(y), s(s), dx(dx), dy(dy) {
 
         for (int i = 0; i < s.size(); ++i) {
             m_map_s[s[i]] = i;
@@ -72,22 +73,47 @@ public:
     }
 };
 
-enum VehicleState {KeepLane, ChangeLaneLeft, ChangeLaneRight};
+enum VehicleState {KeepingLane, ChangingLaneLeft, ChangingLaneRight};
+enum EventTrigger {KeepLane, ChangeLaneRight, ChangeLaneLeft};
+
 class Vehicle {
 private:
-    StateMachine<VehicleState> state;
+    StateMachine<VehicleState, EventTrigger> m_state;
+    BehaviorPlanner m_planner;
     Trajectory m_trajectory;
-    unsigned int lane{0};
-    double target_velocity{45.};
+    int m_lane{1};
+    double m_target_velocity{45.};
+    double m_x{0};
+    double m_y{0};
+    double m_yaw{0};
+    std::vector<std::vector<double>> m_sensor_fusion;
 
+    // action methods
     void keepLane();
+    void changeLaneLeft();
+    void changeLeftEntry();
+    void changeLaneRight();
+    void changeRightEntry();
+
+
 public:
-    Vehicle(): state(KeepLane) {
-        state.registerAction(KeepLane, [this] () { keepLane();});
+    Vehicle(): m_state(KeepingLane) {
+        m_state.registerAction(KeepingLane, [this] () { keepLane();});
+
+
+        m_state.registerAction(ChangingLaneLeft, [this] () { changeLaneLeft();});
+        m_state.onEntry(ChangingLaneLeft, [this] () {changeLeftEntry();});
+
+
+        m_state.registerAction(ChangingLaneRight, [this] () { changeLaneRight();});
+        m_state.onEntry(ChangingLaneRight, [this] () {changeRightEntry();});
+
+        m_state.allow(KeepingLane, ChangingLaneLeft, ChangeLaneLeft);
+        m_state.allow(KeepingLane, ChangingLaneRight, ChangeLaneRight);
+        m_state.allow(ChangingLaneLeft, KeepingLane, KeepLane);
+        m_state.allow(ChangingLaneRight, KeepingLane, KeepLane);
     };
     const Trajectory &getTrajectory() const {return m_trajectory;};
-    void update(double x, double y, double yaw, std::vector<double> &prev_x, std::vector<double> &prev_y, double last_s, double last_d, Map &map);
+    void update(double x, double y, double yaw, std::vector<double> &prev_x, std::vector<double> &prev_y, double last_s, double last_d, Map &map, std::vector<std::vector<double>> sensor_fusion);
 };
-
-
 #endif //PATH_PLANNING_VEHICLE_H
