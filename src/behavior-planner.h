@@ -13,7 +13,6 @@
 #include <iostream>
 #include <utility>
 
-
 class PossibleTrajectory {
 private:
     int m_lane_id;
@@ -28,6 +27,12 @@ public:
     int getLaneId() const {
         return m_lane_id;
     }
+};
+
+struct TrajectoryCost {
+public:
+    double cost;
+    PossibleTrajectory trajectory;
 };
 
 template <class T>
@@ -73,7 +78,7 @@ public:
         m_possible_trajectories.emplace_back(PossibleTrajectory{1, 4., 8.});
         m_possible_trajectories.emplace_back(PossibleTrajectory{2, 8., 12.});
     }
-    int determineBestTrajectory(std::vector<std::vector<double>> &sensor_fusion, double x, double y, double last_s);
+    std::vector<TrajectoryCost> calculateTrajectoryCosts(std::vector<std::vector<double>> &sensor_fusion, double x, double y, double last_s);
 };
 
 
