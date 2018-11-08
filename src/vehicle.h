@@ -85,7 +85,10 @@ private:
     double m_target_velocity{45.};
     double m_x{0};
     double m_y{0};
-    double m_yaw{0};
+    double m_last_d;
+    double m_last_s;
+    double m_prev_x;
+    double m_prev_y;
     std::vector<std::vector<double>> m_sensor_fusion;
 
     // action methods
@@ -95,6 +98,9 @@ private:
     void changeLaneRight();
     void changeRightEntry();
 
+    double getIdealD() {
+        return m_lane * 4 + 2;
+    }
 
 public:
     Vehicle(): m_state(KeepingLane) {

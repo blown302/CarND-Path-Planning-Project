@@ -7,12 +7,14 @@
 
 using namespace std;
 
-double BehaviorPlanner::distanceFromVehicle(DetectedVehicle detected_vehicle, double x, double y, PossibleTrajectory trajectory) {
+double BehaviorPlanner::distanceFromVehicle(DetectedVehicle detected_vehicle, double x, double y, double last_s, PossibleTrajectory trajectory) {
 
     const auto high_thresh = 30.;
     const auto low_thesh = 10.;
     const auto weight = 1.;
+    if (!trajectory.isInRange(detected_vehicle.d)) return 0;
 
+//    auto dist = detected_vehicle.s - last_s;
     auto dist = distance(x, y, detected_vehicle.x, detected_vehicle.y);
     if (dist > high_thresh) return 0;
     if (dist < low_thesh) return 1;
@@ -30,20 +32,20 @@ double BehaviorPlanner::sameLaneAsVehicle(DetectedVehicle detected_vehicle, Poss
     return 0;
 }
 
-double BehaviorPlanner::calculateCost(DetectedVehicle detected_vehicle, double x, double y, PossibleTrajectory trajectory) {
+double BehaviorPlanner::calculateCost(DetectedVehicle detected_vehicle, double x, double y, double last_s, PossibleTrajectory trajectory) {
 
     auto cost = 0.;
 
-    cost += distanceFromVehicle(detected_vehicle, x, y, trajectory);
+    cost += distanceFromVehicle(detected_vehicle, x, y, last_s, trajectory);
 //    cout << "after distance " << cost << endl;
-    cost += sameLaneAsVehicle(detected_vehicle, trajectory);
+//    cost += sameLaneAsVehicle(detected_vehicle, trajectory);
 //    cout << "after same lane distance " <<  cost << endl;
 
 
     return cost;
 }
 
-int BehaviorPlanner::determineBestTrajectory(std::vector<std::vector<double>> &sensor_fusion, double car_x, double car_y) {
+int BehaviorPlanner::determineBestTrajectory(std::vector<std::vector<double>> &sensor_fusion, double car_x, double car_y, double last_s) {
     for (auto c: sensor_fusion) {
         auto id = c[0];
         auto x = c[1];
@@ -67,18 +69,26 @@ int BehaviorPlanner::determineBestTrajectory(std::vector<std::vector<double>> &s
             auto id = kv.first;
             auto vehicle = kv.second.getNext();
 
-            cost += calculateCost(vehicle, car_x, car_y, traj);
+            cost += calculateCost(vehicle, car_x, car_y, last_s, traj);
 
         }
-        cout << "lane " << traj.getLaneId() << " cost " << cost << endl;
         calcd_traj.emplace_back(make_pair(cost, traj));
     }
+
 
     auto min_traj = min_element(calcd_traj.begin(), calcd_traj.end(), [](pair<double, PossibleTrajectory> c1, pair<double, PossibleTrajectory> c2) {
        return c1.first < c2.first;
     });
 
-    cout << "min cost: " << min_traj->first << endl;
+    cout << "calc'd trajectories: ";
+
+    for (auto &t: calcd_traj) {
+        cout << "lane: " << t.second.getLaneId() << "with cost: " << t.first << " ";
+    }
+
+    cout << "min cost for lane: " << min_traj->second.getLaneId() << endl;
+
+//    cout << "min cost: " << min_traj->first << endl;
 
     return min_traj->second.getLaneId();
 }

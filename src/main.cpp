@@ -122,7 +122,7 @@ int main() {
           	msgJson["next_y"] = trajectory.getYPath();
 
           	auto msg = "42[\"control\","+ msgJson.dump()+"]";
-            cout << msg << endl;
+//            cout << msg << endl;
           	//this_thread::sleep_for(chrono::milliseconds(1000));
           	ws.send(msg.data(), msg.length(), uWS::OpCode::TEXT);
           

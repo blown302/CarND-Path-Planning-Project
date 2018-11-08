@@ -10,6 +10,7 @@
 #include <functional>
 #include <vector>
 #include <exception>
+#include <iostream>
 
 template <class T, class TR>
 class StateMachine {
@@ -41,7 +42,9 @@ public:
         }
         state = m_allowed_transitions[state][trigger];
         // run on entry
-        m_entry_transitions[state]();
+        if (m_entry_transitions.find(state) != m_entry_transitions.end())
+            m_entry_transitions[state]();
+        std::cout << "changing state to " << state << std::endl;
     };
 
 };

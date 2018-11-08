@@ -11,12 +11,12 @@ using namespace std;
 void Vehicle::update(double x, double y, double yaw, vector<double> &prev_x, vector<double> &prev_y, double last_s, double last_d, Map &map, vector<vector<double>> sensor_fusion) {
     m_x = x;
     m_y = y;
-    m_yaw = yaw;
+    m_last_d = last_d;
+    m_last_s = last_s;
     m_sensor_fusion = std::move(sensor_fusion);
 
-    m_state.process();
 
-    cout << "using lane: " << m_lane << endl;
+//    cout << "using lane: " << m_lane << endl;
 
     vector<double> spline_x;
     vector<double> spline_y;
@@ -39,6 +39,9 @@ void Vehicle::update(double x, double y, double yaw, vector<double> &prev_x, vec
         prev_ref_y = prev_y[prev_size -2];
     }
 
+    m_prev_x = ref_x;
+    m_prev_y = ref_y;
+    m_state.process();
 
     // push previous points point onto the spline vectors.
     spline_x.push_back(prev_ref_x);
@@ -87,8 +90,8 @@ void Vehicle::update(double x, double y, double yaw, vector<double> &prev_x, vec
 }
 
 void Vehicle::keepLane() {
-    cout << "running state keeping lane" << endl;
-    auto lane = m_planner.determineBestTrajectory(m_sensor_fusion, m_x, m_y);
+//    cout << "running state keeping lane" << endl;
+    auto lane = m_planner.determineBestTrajectory(m_sensor_fusion, m_prev_x, m_prev_y, m_last_s);
     auto delta = lane - m_lane;
     if (delta == 1) {
         m_state.fire(ChangeLaneRight);
@@ -98,23 +101,34 @@ void Vehicle::keepLane() {
 }
 
 void Vehicle::changeLaneLeft() {
-    cout << "running state changing left" << endl;
+//    cout << "running state changing left" << endl;
+    // TODO: consolidate or extract method.
+    const auto lane_tolerance = .25;
+    auto d = getIdealD();
 
+    if (m_last_d > d - lane_tolerance and m_last_d < d + lane_tolerance) {
+        m_state.fire(KeepLane);
+    }
 }
 
 void Vehicle::changeLaneRight() {
-    cout << "running state changing right" << endl;
+//    cout << "running state changing right" << endl;
+    const auto lane_tolerance = 1;
+    auto d = getIdealD();
 
+    if (m_last_d > d - lane_tolerance and m_last_d < d + lane_tolerance) {
+        m_state.fire(KeepLane);
+    }
 }
 
 void Vehicle::changeLeftEntry() {
-    cout << "running entry of change left state" << endl;
     m_lane--;
+    cout << "running entry of change left state to lane: " << m_lane << endl;
 }
 
 void Vehicle::changeRightEntry() {
-    cout << "running entry of change right state" << endl;
     m_lane++;
+    cout << "running entry of change right state to lane: " << m_lane << endl;
 }
 
 

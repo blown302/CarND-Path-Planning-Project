@@ -65,15 +65,15 @@ private:
     std::unordered_map<double, Buffer<DetectedVehicle>> m_detected_vehicles;
 
     double sameLaneAsVehicle(DetectedVehicle detected_vehicle, PossibleTrajectory trajectory);
-    double calculateCost(DetectedVehicle detected_vehicle, double x, double y, PossibleTrajectory trajectory);
-    double distanceFromVehicle(DetectedVehicle detected_vehicle, double x, double y, PossibleTrajectory trajectory);
+    double calculateCost(DetectedVehicle detected_vehicle, double x, double y, double last_s, PossibleTrajectory trajectory);
+    double distanceFromVehicle(DetectedVehicle detected_vehicle, double x, double y, double last_s, PossibleTrajectory trajectory);
 public:
     BehaviorPlanner() {
         m_possible_trajectories.emplace_back(PossibleTrajectory{0, 0., 4.});
         m_possible_trajectories.emplace_back(PossibleTrajectory{1, 4., 8.});
         m_possible_trajectories.emplace_back(PossibleTrajectory{2, 8., 12.});
     }
-    int determineBestTrajectory(std::vector<std::vector<double>> &sensor_fusion, double x, double y);
+    int determineBestTrajectory(std::vector<std::vector<double>> &sensor_fusion, double x, double y, double last_s);
 };
 
 
