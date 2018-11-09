@@ -8,12 +8,13 @@
 
 using namespace std;
 
-void Vehicle::update(double x, double y, double yaw, vector<double> &prev_x, vector<double> &prev_y, double last_s, double last_d, Map &map, vector<vector<double>> sensor_fusion) {
+void Vehicle::update(double x, double y, double yaw, vector<double> &prev_x, vector<double> &prev_y, double last_s, double last_d, Map &map, vector<vector<double>> sensor_fusion, double v) {
     m_x = x;
     m_y = y;
     m_last_d = last_d;
     m_last_s = last_s;
     m_sensor_fusion = std::move(sensor_fusion);
+//    m_target_velocity = v;
 
 
 //    cout << "using lane: " << m_lane << endl;
@@ -79,13 +80,16 @@ void Vehicle::update(double x, double y, double yaw, vector<double> &prev_x, vec
     auto target_distance = sqrt(pow(ref_x - target_x, 2) + pow(ref_y - target_y, 2));
 
 
-    auto points_ahead = static_cast<int>(target_distance / (.02 * m_target_velocity / 2.24));
-    auto point_interval = target_distance / points_ahead;
-    m_trajectory.setPointsAhead(points_ahead);
+    auto interval = target_distance / static_cast<int>(target_distance / (.02 * m_target_velocity / 2.24));
     while (!m_trajectory.is_full()) {
-        ref_x += point_interval;
+        ref_x += interval;
         ref_y = spline(ref_x);
         m_trajectory.add(ref_x, ref_y);
+        if (m_max_velocity > m_target_velocity) {
+            m_target_velocity += .2;
+            interval = target_distance / static_cast<int>(target_distance / (.02 * m_target_velocity / 2.24));
+//            m_trajectory.setPointsAhead(points_ahead);
+        }
     }
 }
 

@@ -23,7 +23,7 @@ class Trajectory {
 private:
     std::vector<double> m_x;
     std::vector<double> m_y;
-    int points_ahead = 100;
+    int points_ahead = 50;
 public:
     void setPointsAhead(int points_ahead) {
         Trajectory::points_ahead = points_ahead;
@@ -82,7 +82,8 @@ private:
     BehaviorPlanner m_planner;
     Trajectory m_trajectory;
     int m_lane{1};
-    double m_target_velocity{45.};
+    double m_max_velocity{45.};
+    double m_target_velocity{1.};
     double m_x{0};
     double m_y{0};
     double m_last_d;
@@ -120,6 +121,6 @@ public:
         m_state.allow(ChangingLaneRight, KeepingLane, KeepLane);
     };
     const Trajectory &getTrajectory() const {return m_trajectory;};
-    void update(double x, double y, double yaw, std::vector<double> &prev_x, std::vector<double> &prev_y, double last_s, double last_d, Map &map, std::vector<std::vector<double>> sensor_fusion);
+    void update(double x, double y, double yaw, std::vector<double> &prev_x, std::vector<double> &prev_y, double last_s, double last_d, Map &map, std::vector<std::vector<double>> sensor_fusion, double v);
 };
 #endif //PATH_PLANNING_VEHICLE_H
