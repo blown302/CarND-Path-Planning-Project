@@ -115,6 +115,7 @@ int main() {
           	// Sensor Fusion Data, a list of all other cars on the same side of the road.
           	auto sensor_fusion = j[1]["sensor_fusion"];
 
+            cout << "speed: " <<  car_speed << endl;
           	json msgJson;
 
             vehicle.update(car_x, car_y, car_yaw, previous_path_x, previous_path_y, end_path_s, end_path_d, sensor_fusion, car_speed);

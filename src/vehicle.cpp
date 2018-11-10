@@ -83,10 +83,13 @@ void Vehicle::updateSpline() {
         xy = getXY(wp_s, m_d, m_map.s, m_map.x, m_map.y);
     }
 
+    wp_s = m_map.getNextWaypointByS(wp_s)[0];
+    xy = getXY(wp_s, m_d, m_map.s, m_map.x, m_map.y);
+
     m_spline_x.push_back(xy[0]);
     m_spline_y.push_back(xy[1]);
 
-    for (int i = 0; i < 5; ++i) {
+    for (int i = 0; i < 10; ++i) {
         wp_s = m_map.getNextWaypointByS(wp_s)[0];
         xy = getXY(wp_s, m_d, m_map.s, m_map.x, m_map.y);
         m_spline_x.push_back(xy[0]);
@@ -140,9 +143,13 @@ void Vehicle::changeLaneLeft() {
     // TODO: consolidate or extract method.
     const auto lane_tolerance = .1;
     auto ideal_d = getIdealD();
+    updateSpline();
+
+    auto frenet = getFrenet(m_x, m_y, deg2rad(m_yaw), m_map.x, m_map.y);
+    auto d = frenet[1];
 
     cout << "left d " << m_d << endl;
-    if (m_last_d > ideal_d - lane_tolerance and m_last_d < ideal_d + lane_tolerance)
+    if (d > ideal_d - lane_tolerance and d < ideal_d + lane_tolerance)
         m_state.fire(KeepLane);
 
 }
@@ -151,6 +158,8 @@ void Vehicle::changeLaneRight() {
     cout << "running state changing right" << endl;
     const auto lane_tolerance = .1;
     auto ideal_d = getIdealD();
+
+    updateSpline();
 
     cout << "left d " << m_d << endl;
     if (m_d > ideal_d - lane_tolerance and m_d < ideal_d + lane_tolerance)

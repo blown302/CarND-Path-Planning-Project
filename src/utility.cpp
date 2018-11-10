@@ -3,6 +3,7 @@
 //
 
 #include "utility.h"
+#include <iostream>
 
 using namespace std;
 
@@ -87,7 +88,7 @@ int NextWaypoint(double x, double y, double theta, const vector<double> &maps_x,
             closestWaypoint = 0;
         }
     }
-
+    cout << "wp index: " << closestWaypoint << endl;
     return closestWaypoint;
 }
 
