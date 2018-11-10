@@ -67,16 +67,18 @@ int main() {
   	map_waypoints_dy.push_back(d_y);
   }
 
-  Vehicle vehicle;
-  Map map {
-    map_waypoints_x,
-    map_waypoints_y,
-    map_waypoints_s,
-    map_waypoints_dx,
-    map_waypoints_dy
+  Vehicle vehicle { Map
+    {
+      map_waypoints_x,
+      map_waypoints_y,
+      map_waypoints_s,
+      map_waypoints_dx,
+      map_waypoints_dy
+    }
   };
 
-  h.onMessage([&map_waypoints_x,&map_waypoints_y,&map_waypoints_s,&map_waypoints_dx,&map_waypoints_dy, &vehicle, &map](uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length,
+
+  h.onMessage([&map_waypoints_x,&map_waypoints_y,&map_waypoints_s,&map_waypoints_dx,&map_waypoints_dy, &vehicle](uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length,
                      uWS::OpCode opCode) {
     // "42" at the start of the message means there's a websocket message event.
     // The 4 signifies a websocket message
@@ -115,14 +117,14 @@ int main() {
 
           	json msgJson;
 
-            vehicle.update(car_x, car_y, car_yaw, previous_path_x, previous_path_y, end_path_s, end_path_d, map, sensor_fusion, car_speed);
+            vehicle.update(car_x, car_y, car_yaw, previous_path_x, previous_path_y, end_path_s, end_path_d, sensor_fusion, car_speed);
             auto trajectory = vehicle.getTrajectory();
           	// TODO: define a path made up of (x,y) points that the car will visit sequentially every .02 seconds
           	msgJson["next_x"] = trajectory.getXPath();
           	msgJson["next_y"] = trajectory.getYPath();
 
           	auto msg = "42[\"control\","+ msgJson.dump()+"]";
-//            cout << msg << endl;
+            cout << msg << endl;
           	//this_thread::sleep_for(chrono::milliseconds(1000));
           	ws.send(msg.data(), msg.length(), uWS::OpCode::TEXT);
           

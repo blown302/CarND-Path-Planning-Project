@@ -46,7 +46,6 @@ public:
             m_entry_transitions[state]();
         std::cout << "changing state to " << state << std::endl;
     };
-
 };
 
 #endif //PATH_PLANNING_STATE_MACHINE_H

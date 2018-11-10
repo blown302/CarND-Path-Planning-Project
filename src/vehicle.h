@@ -1,3 +1,5 @@
+#include <utility>
+
 //
 // Created by Thomas Milas on 11/1/18.
 //
@@ -82,14 +84,26 @@ private:
     BehaviorPlanner m_planner;
     Trajectory m_trajectory;
     int m_lane{1};
+    double m_x;
+    double m_y;
+    double m_yaw;
     double m_max_velocity{45.};
     double m_target_velocity{1.};
-    double m_x{0};
-    double m_y{0};
+    double m_ref_x{0};
+    double m_ref_y{0};
     double m_last_d;
     double m_last_s;
     double m_prev_x;
     double m_prev_y;
+    Map m_map;
+    double m_d {getIdealD()};
+    tk::spline m_spline;
+
+    const double m_d_interval{.008  };
+
+    std::vector<double> m_spline_x;
+    std::vector<double> m_spline_y;
+
     std::vector<std::vector<double>> m_sensor_fusion;
 
     // action methods
@@ -102,9 +116,10 @@ private:
     double getIdealD() {
         return m_lane * 4 + 2;
     }
+    void updateSpline();
 
 public:
-    Vehicle(): m_state(KeepingLane) {
+    Vehicle(Map map): m_state(KeepingLane), m_map(std::move(map)) {
         m_state.registerAction(KeepingLane, [this] () { keepLane();});
 
 
@@ -121,6 +136,6 @@ public:
         m_state.allow(ChangingLaneRight, KeepingLane, KeepLane);
     };
     const Trajectory &getTrajectory() const {return m_trajectory;};
-    void update(double x, double y, double yaw, std::vector<double> &prev_x, std::vector<double> &prev_y, double last_s, double last_d, Map &map, std::vector<std::vector<double>> sensor_fusion, double v);
+    void update(double x, double y, double yaw, std::vector<double> &prev_x, std::vector<double> &prev_y, double last_s, double last_d, std::vector<std::vector<double>> sensor_fusion, double v);
 };
 #endif //PATH_PLANNING_VEHICLE_H
