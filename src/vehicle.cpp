@@ -53,26 +53,41 @@ void Vehicle::update(double x, double y, double yaw, vector<double> &prev_x, vec
     m_spline_x.push_back(m_ref_x);
     m_spline_y.push_back(m_ref_y);
 
+    m_ref_theta = atan2(m_ref_y - prev_ref_y, m_ref_x - prev_ref_x);
+
     m_state.process();
 
 
     m_trajectory.update(prev_x, prev_y, last_s, last_d);
 
     // set speed
-    auto x_dist = .5;
-    auto target_x = m_ref_x + x_dist;
+    auto x_dist = 30.;
+    auto target_x = x_dist;
     auto target_y = m_spline(target_x);
-    auto target_distance = distance(m_ref_x, m_ref_y, target_x, target_y);
+    auto target_distance = sqrt(pow(target_x, 2) + pow(target_y, 2));
 
 
-    auto interval = x_dist / (target_distance / (.02 * m_target_velocity / 2.24));
+    auto points = (target_distance / (.02 * m_target_velocity / 2.24));
+//    m_trajectory.setPointsAhead(points);
+    auto interval = (target_x / points);
+    double x_temp = 0., y_temp;
     while (!m_trajectory.is_full()) {
-        m_ref_x += interval;
-        m_ref_y = m_spline(m_ref_x);
-        m_trajectory.add(m_ref_x, m_ref_y);
+        x_temp += interval;
+        y_temp = m_spline(x_temp);
+
+        auto x_point = (x_temp * cos(m_ref_theta) - y_temp * sin(m_ref_theta));
+        auto y_point = (x_temp * sin(m_ref_theta) + y_temp * cos(m_ref_theta));
+
+//        m_ref_x += x_point;
+//        m_ref_y += y_point;
+
+        m_trajectory.add(m_ref_x + x_point, m_ref_y + y_point);
         if (m_max_velocity > m_target_velocity) {
             m_target_velocity += .2;
-            interval = x_dist / (target_distance / (.02 * m_target_velocity / 2.24));
+            // TODO: extract to be reused.
+            points = (target_distance / (.02 * m_target_velocity / 2.24));
+//            m_trajectory.setPointsAhead(points);
+            interval = x_dist / points;
         }
     }
 
@@ -82,7 +97,6 @@ void Vehicle::update(double x, double y, double yaw, vector<double> &prev_x, vec
 }
 
 void Vehicle::updateSpline() {
-    // TODO: make this dry between the different states.
     double wp_s;
 
     if (m_last_s == 0.) {
@@ -90,12 +104,20 @@ void Vehicle::updateSpline() {
     } else {
         wp_s = m_last_s;
     }
+
     for (int i = 0; i < 3; ++i) {
         wp_s += 30.;
         auto xy = getXY(wp_s, getIdealD(), m_map.s, m_map.x, m_map.y);
-        if (xy[0] <= m_spline_x[m_spline_x.size() -1]) continue;
         m_spline_x.push_back(xy[0]);
         m_spline_y.push_back(xy[1]);
+    }
+
+    for (auto i = 0; i < m_spline_x.size(); ++i) {
+        auto shift_x = m_spline_x[i] - m_ref_x;
+        auto shift_y = m_spline_y[i] - m_ref_y;
+
+        m_spline_x[i] = (shift_x * cos(-m_ref_theta) - shift_y * sin(-m_ref_theta));
+        m_spline_y[i] = (shift_x * sin(-m_ref_theta) + shift_y * cos(-m_ref_theta));
     }
 
     m_spline = tk::spline();

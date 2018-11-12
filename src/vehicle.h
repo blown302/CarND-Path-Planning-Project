@@ -88,9 +88,10 @@ private:
     double m_y;
     double m_yaw;
     double m_max_velocity{45.};
-    double m_target_velocity{1.};
+    double m_target_velocity{10.};
     double m_ref_x{0};
     double m_ref_y{0};
+    double m_ref_theta{0};
     double m_last_d;
     double m_last_s;
     double m_prev_x;
