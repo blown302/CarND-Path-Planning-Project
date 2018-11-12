@@ -97,9 +97,8 @@ private:
     double m_prev_y;
     Map m_map;
     double m_d {getIdealD()};
+    double m_s {};
     tk::spline m_spline;
-
-    const double m_d_interval{.008  };
 
     std::vector<double> m_spline_x;
     std::vector<double> m_spline_y;
@@ -121,7 +120,6 @@ private:
 public:
     Vehicle(Map map): m_state(KeepingLane), m_map(std::move(map)) {
         m_state.registerAction(KeepingLane, [this] () { keepLane();});
-
 
         m_state.registerAction(ChangingLaneLeft, [this] () { changeLaneLeft();});
         m_state.onEntry(ChangingLaneLeft, [this] () {changeLeftEntry();});

@@ -15,7 +15,10 @@ void Vehicle::update(double x, double y, double yaw, vector<double> &prev_x, vec
     m_x = x;
     m_y = y;
     m_sensor_fusion = std::move(sensor_fusion);
-//    m_target_velocity = v;
+
+    auto frenet = getFrenet(x, y, rad2deg(yaw), m_map.x, m_map.y);
+    m_s = frenet[0];
+    m_d = frenet[1];
 
 
 //    cout << "using lane: " << m_lane << endl;
@@ -56,42 +59,41 @@ void Vehicle::update(double x, double y, double yaw, vector<double> &prev_x, vec
     m_trajectory.update(prev_x, prev_y, last_s, last_d);
 
     // set speed
-    auto target_x = m_ref_x + 30;
+    auto x_dist = .5;
+    auto target_x = m_ref_x + x_dist;
     auto target_y = m_spline(target_x);
-    auto target_distance = sqrt(pow(m_ref_x - target_x, 2) + pow(m_ref_y - target_y, 2));
+    auto target_distance = distance(m_ref_x, m_ref_y, target_x, target_y);
 
 
-    auto interval = target_distance / static_cast<int>(target_distance / (.02 * m_target_velocity / 2.24));
+    auto interval = x_dist / (target_distance / (.02 * m_target_velocity / 2.24));
     while (!m_trajectory.is_full()) {
         m_ref_x += interval;
         m_ref_y = m_spline(m_ref_x);
         m_trajectory.add(m_ref_x, m_ref_y);
         if (m_max_velocity > m_target_velocity) {
             m_target_velocity += .2;
-            interval = target_distance / static_cast<int>(target_distance / (.02 * m_target_velocity / 2.24));
+            interval = x_dist / (target_distance / (.02 * m_target_velocity / 2.24));
         }
     }
+
+    cout << "speed: " <<  v << " with interval " << interval << endl;
+
+    if (v > 70.) throw "too fast";
 }
 
 void Vehicle::updateSpline() {
     // TODO: make this dry between the different states.
-    double wp_s = m_map.s[NextWaypoint(m_x, m_y, deg2rad(m_yaw), m_map.x, m_map.y)];
-    auto xy = getXY(wp_s, m_d, m_map.s, m_map.x, m_map.y);
+    double wp_s;
 
-    while (xy[0] < m_ref_x) {
-        wp_s = m_map.getNextWaypointByS(wp_s)[0];
-        xy = getXY(wp_s, m_d, m_map.s, m_map.x, m_map.y);
+    if (m_last_s == 0.) {
+        wp_s = m_s;
+    } else {
+        wp_s = m_last_s;
     }
-
-    wp_s = m_map.getNextWaypointByS(wp_s)[0];
-    xy = getXY(wp_s, m_d, m_map.s, m_map.x, m_map.y);
-
-    m_spline_x.push_back(xy[0]);
-    m_spline_y.push_back(xy[1]);
-
-    for (int i = 0; i < 10; ++i) {
-        wp_s = m_map.getNextWaypointByS(wp_s)[0];
-        xy = getXY(wp_s, m_d, m_map.s, m_map.x, m_map.y);
+    for (int i = 0; i < 3; ++i) {
+        wp_s += 30.;
+        auto xy = getXY(wp_s, getIdealD(), m_map.s, m_map.x, m_map.y);
+        if (xy[0] <= m_spline_x[m_spline_x.size() -1]) continue;
         m_spline_x.push_back(xy[0]);
         m_spline_y.push_back(xy[1]);
     }
@@ -148,7 +150,6 @@ void Vehicle::changeLaneLeft() {
     auto frenet = getFrenet(m_x, m_y, deg2rad(m_yaw), m_map.x, m_map.y);
     auto d = frenet[1];
 
-    cout << "left d " << m_d << endl;
     if (d > ideal_d - lane_tolerance and d < ideal_d + lane_tolerance)
         m_state.fire(KeepLane);
 
@@ -161,15 +162,12 @@ void Vehicle::changeLaneRight() {
 
     updateSpline();
 
-    cout << "left d " << m_d << endl;
     if (m_d > ideal_d - lane_tolerance and m_d < ideal_d + lane_tolerance)
         m_state.fire(KeepLane);
 }
 
 void Vehicle::changeLeftEntry() {
     m_lane--;
-
-    m_d = getIdealD();
 
     updateSpline();
 
@@ -178,7 +176,6 @@ void Vehicle::changeLeftEntry() {
 
 void Vehicle::changeRightEntry() {
     m_lane++;
-    m_d = getIdealD();
 
     updateSpline();
     cout << "running entry of change right state to lane: " << m_lane << endl;
