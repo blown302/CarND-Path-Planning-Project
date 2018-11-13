@@ -7,38 +7,36 @@
 
 using namespace std;
 
-double BehaviorPlanner::distanceFromVehicle(DetectedVehicle detected_vehicle, double x, double y, double last_s, PossibleTrajectory trajectory) {
+double BehaviorPlanner::distanceFromVehicle(DetectedVehicle detected_vehicle, double x, double y, double s, PossibleTrajectory trajectory) {
 
-    const auto high_thresh = 30.;
-    const auto low_thesh = 10.;
-    const auto weight = 1.;
+    const auto high_thresh = 50.;
+    const auto weight = 100.;
     if (!trajectory.isInRange(detected_vehicle.d)) return 0;
 
-//    auto dist = detected_vehicle.s - last_s;
-    auto dist = distance(x, y, detected_vehicle.x, detected_vehicle.y);
-    if (dist > high_thresh) return 0;
-    if (dist < low_thesh) return 1;
+    auto dist = detected_vehicle.s - s;
 
+    if (dist > high_thresh or dist < 0) return 0;
+
+    cout << "Lane " << trajectory.getLaneId() << " distance: " << dist << endl;
     auto cost = (high_thresh - dist) / high_thresh;
-//    cout <<  "d: " << detected_vehicle.d << " with distance " << dist << " cost " << cost << endl;
     return cost * weight;
 }
 
 
-double BehaviorPlanner::sameLaneAsVehicle(DetectedVehicle detected_vehicle, PossibleTrajectory trajectory) {
-    const auto weight = 1;
-    if (trajectory.isInRange(detected_vehicle.d)) return weight;
+double BehaviorPlanner::changeLaneCost(DetectedVehicle detected_vehicle, PossibleTrajectory trajectory, int lane) {
+    const auto weight = 1.;
+    if (trajectory.getLaneId() != lane) return weight;
 
     return 0;
 }
 
-double BehaviorPlanner::calculateCost(DetectedVehicle detected_vehicle, double x, double y, double last_s, PossibleTrajectory trajectory) {
+double BehaviorPlanner::calculateCost(DetectedVehicle detected_vehicle, double x, double y, double s, PossibleTrajectory trajectory, int lane) {
 
     auto cost = 0.;
 
-    cost += distanceFromVehicle(detected_vehicle, x, y, last_s, trajectory);
+    cost += distanceFromVehicle(detected_vehicle, x, y, s, trajectory);
 //    cout << "after distance " << cost << endl;
-//    cost += sameLaneAsVehicle(detected_vehicle, trajectory);
+    cost += changeLaneCost(detected_vehicle, trajectory, lane);
 //    cout << "after same lane distance " <<  cost << endl;
 
 
@@ -46,7 +44,7 @@ double BehaviorPlanner::calculateCost(DetectedVehicle detected_vehicle, double x
 }
 
 vector<TrajectoryCost> BehaviorPlanner::calculateTrajectoryCosts(std::vector<std::vector<double>> &sensor_fusion, double car_x,
-                                              double car_y, double last_s) {
+                                              double car_y, double s, int lane) {
     for (auto c: sensor_fusion) {
         auto id = c[0];
         auto x = c[1];
@@ -67,10 +65,9 @@ vector<TrajectoryCost> BehaviorPlanner::calculateTrajectoryCosts(std::vector<std
     for (auto &traj: m_possible_trajectories) {
         auto cost = 0.;
         for(auto &kv : m_detected_vehicles) {
-            auto id = kv.first;
             auto vehicle = kv.second.getNext();
 
-            cost += calculateCost(vehicle, car_x, car_y, last_s, traj);
+            cost += calculateCost(vehicle, car_x, car_y, s, traj, lane);
 
         }
         calcd_traj.emplace_back(TrajectoryCost{cost, traj});

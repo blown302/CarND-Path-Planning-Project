@@ -128,39 +128,33 @@ void Vehicle::updateSpline() {
 void Vehicle::keepLane() {
     cout << "running state keeping lane" << endl;
 
-    auto trajectory_costs = m_planner.calculateTrajectoryCosts(m_sensor_fusion, m_prev_x, m_prev_y, m_last_s);
+    auto trajectory_costs = m_planner.calculateTrajectoryCosts(m_sensor_fusion, m_prev_x, m_prev_y, m_s, m_lane);
 
     cout << "calc'd trajectories: ";
 
-    auto min = 10000., current_lane_cost = 0.;
+    auto min = 10000., current_lane_cost = 1000.;
     auto min_lane_id = m_lane;
     for (auto &t: trajectory_costs) {
-
         if (t.cost < min) {
             min = t.cost;
             min_lane_id = t.trajectory.getLaneId();
         }
-        if (t.trajectory.getLaneId() == m_lane)
-            current_lane_cost = t.cost;
 
         cout << "lane: " << t.trajectory.getLaneId() << " with cost: " << t.cost << " ";
     }
 
-    if (min != current_lane_cost) {
-        auto delta = min_lane_id - m_lane;
-        if (delta == 1) {
-            m_state.fire(ChangeLaneRight);
-        } else if (delta == -1) {
-            m_state.fire(ChangeLaneLeft);
-        } else {
-            updateSpline();
-            cout << "keeping lane: " << m_lane << endl;
-        }
+    auto delta = min_lane_id - m_lane;
+    if (delta > 0) {
+        m_state.fire(ChangeLaneRight);
+    } else if (delta < 0) {
+        m_state.fire(ChangeLaneLeft);
     } else {
         updateSpline();
-        cout << "keeping lane: " << m_lane << endl;
+        cout << "keeping lane: " << m_lane << " min: " << min << endl;
     }
 }
+
+
 
 void Vehicle::changeLaneLeft() {
     cout << "running state changing left" << endl;

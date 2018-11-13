@@ -87,7 +87,7 @@ private:
     double m_x;
     double m_y;
     double m_yaw;
-    double m_max_velocity{45.};
+    double m_max_velocity{48.};
     double m_target_velocity{10.};
     double m_ref_x{0};
     double m_ref_y{0};
@@ -113,11 +113,11 @@ private:
     void changeLaneRight();
     void changeRightEntry();
 
+
     double getIdealD() {
         return m_lane * 4 + 2;
     }
     void updateSpline();
-
 public:
     Vehicle(Map map): m_state(KeepingLane), m_map(std::move(map)) {
         m_state.registerAction(KeepingLane, [this] () { keepLane();});
