@@ -23,7 +23,6 @@ private:
 public:
     PossibleTrajectory() = default;
     PossibleTrajectory(int lane_id, double min_d, double max_d): m_lane_id(lane_id), m_min_d(min_d), m_max_d(max_d), m_override_speed(false), m_speed(0) {}
-    PossibleTrajectory(int lane_id, double min_d, double max_d, bool is_speed_overridden, double override_speed): m_lane_id(lane_id), m_min_d(min_d), m_max_d(max_d), m_override_speed(is_speed_overridden), m_speed(override_speed) {}
     bool isInRange(double d) const {
         return d > m_min_d and d < m_max_d;
     }
@@ -93,10 +92,27 @@ private:
      * @param trajectory
      * @param lane
      * @param s
-     * @return
+     * @return cost of changing lanes.
      */
     double changeLaneCost(DetectedVehicle detected_vehicle, PossibleTrajectory trajectory, int lane, double s);
-    double calculateCost(DetectedVehicle detected_vehicle, double s, double speed, PossibleTrajectory trajectory, int lane);
+    /**
+     *
+     * @param detected_vehicle
+     * @param s
+     * @param trajectory
+     * @param lane
+     * @return
+     */
+    double calculateCost(DetectedVehicle detected_vehicle, double s, PossibleTrajectory trajectory, int lane);
+    /**
+     * Cost function to that measures distance to vehicle.
+     * Increases cost when within a threshold distance of a detected vehicle.
+     * @param detected_vehicle
+     * @param s
+     * @param trajectory
+     * @param lane
+     * @return
+     */
     double distanceFromVehicle(DetectedVehicle detected_vehicle, double s, PossibleTrajectory trajectory, int lane);
 public:
     BehaviorPlanner() {
@@ -106,6 +122,15 @@ public:
         m_possible_trajectories.emplace_back(PossibleTrajectory{1, 4., 8.});
         m_possible_trajectories.emplace_back(PossibleTrajectory{2, 8., 12.});
     }
+
+    /**
+     * Calculates the costs of all of the possible trajectories.
+     * @param sensor_fusion
+     * @param s
+     * @param speed
+     * @param lane
+     * @return
+     */
     const std::vector<TrajectoryCost> calculateTrajectoryCosts(std::vector<std::vector<double>> &sensor_fusion, double s, double speed, int lane);
 };
 

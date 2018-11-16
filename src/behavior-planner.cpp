@@ -4,7 +4,6 @@
 
 #include "behavior-planner.h"
 
-
 using namespace std;
 
 double BehaviorPlanner::distanceFromVehicle(DetectedVehicle detected_vehicle, double s, PossibleTrajectory trajectory, int lane) {
@@ -30,13 +29,11 @@ double BehaviorPlanner::distanceFromVehicle(DetectedVehicle detected_vehicle, do
 
         if (!trajectory.isInRange(detected_vehicle.d) and dist > 40) return 0;
 
-        cout << "distance cost lane : " << trajectory.getLaneId() << " vehicle lane " <<  " detected vehicle lane id " << vehicle_lane_id << " with distance: " << dist << " cost: " << cost <<endl;
         return cost * weight;
     }
 
     return 0;
 }
-
 
 double BehaviorPlanner::changeLaneCost(DetectedVehicle detected_vehicle, PossibleTrajectory trajectory, int lane, double s) {
     if (trajectory.getLaneId() == lane) return 0;
@@ -44,21 +41,16 @@ double BehaviorPlanner::changeLaneCost(DetectedVehicle detected_vehicle, Possibl
     return .1;
 }
 
-double BehaviorPlanner::calculateCost(DetectedVehicle detected_vehicle, double s, double speed, PossibleTrajectory trajectory, int lane) {
-
+double BehaviorPlanner::calculateCost(DetectedVehicle detected_vehicle, double s, PossibleTrajectory trajectory, int lane) {
     auto cost = 0.;
 
     cost += distanceFromVehicle(detected_vehicle, s, trajectory, lane);
     cost += changeLaneCost(detected_vehicle, trajectory, lane, s);
-//    cost += speedCost(detected_vehicle, trajectory, s, speed);
 
     return cost;
 }
 
 const vector<TrajectoryCost> BehaviorPlanner::calculateTrajectoryCosts(std::vector<std::vector<double>> &sensor_fusion, double s, double speed, int lane) {
-    cout << "my s: " << s << endl;
-    cout << "sensor fusion: " << endl;
-
     for (auto & c: sensor_fusion) {
         auto id = c[0];
         auto x = c[1];
@@ -69,14 +61,10 @@ const vector<TrajectoryCost> BehaviorPlanner::calculateTrajectoryCosts(std::vect
         auto s = c[5];
         auto d = c[6];
 
-        cout << "vehicle id: " << id << " s: " << s << " v: " << v << " d: " << d << endl;
-
         if (d <= 0. or d >= 12.) continue;
 
         m_detected_vehicles[id].add({x, y, v, s, d});
     }
-
-
 
     vector<TrajectoryCost> calcd_traj;
 
@@ -91,11 +79,10 @@ const vector<TrajectoryCost> BehaviorPlanner::calculateTrajectoryCosts(std::vect
                 car_in_front_speed = vehicle.v;
             }
 
-            cost += calculateCost(vehicle, s, speed, traj, lane);
+            cost += calculateCost(vehicle, s, traj, lane);
         }
 
         if (car_in_front_dist < 20) traj.setOveriddenSpeed(car_in_front_speed);
-        cout << "calcd override: " << traj.isOverrideSpeed() << " and cost " << cost << endl;
         calcd_traj.emplace_back(TrajectoryCost{cost, traj});
     }
     return calcd_traj;

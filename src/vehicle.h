@@ -12,14 +12,7 @@
 #include "state-machine.h"
 #include "utility.h"
 #include "spline.h"
-#include "unordered_map"
 #include "behavior-planner.h"
-
-
-struct Point {
-    double s;
-    double d;
-};
 
 class Trajectory {
 private:
@@ -52,22 +45,12 @@ public:
     std::vector<double> s;
     std::vector<double> dx;
     std::vector<double> dy;
-    std::unordered_map<double, int> m_map_s;
     Map(std::vector<double> &x,
         std::vector<double> &y,
         std::vector<double> &s,
         std::vector<double> &dx,
         std::vector<double> &dy) : x(x), y(y), s(s), dx(dx), dy(dy) {
-
-        for (int i = 0; i < s.size(); ++i) {
-            m_map_s[s[i]] = i;
-        }
     };
-
-    std::vector<double> getNextWaypointByS(double S) {
-        int index = m_map_s[S] + 1;
-        return std::vector<double> {s[index], x[index] - dx[index], y[index] - dy[index]};
-    }
 };
 
 enum VehicleState {KeepingLane, ChangingLaneLeft, ChangingLaneRight};
@@ -90,12 +73,8 @@ private:
     double m_ref_x{0};
     double m_ref_y{0};
     double m_ref_theta{0};
-    double m_last_d;
     double m_last_s;
-    double m_prev_x;
-    double m_prev_y;
     Map m_map;
-    double m_d {getIdealD()};
     double m_s {};
     tk::spline m_spline;
 
@@ -105,25 +84,51 @@ private:
     std::vector<std::vector<double>> m_sensor_fusion;
 
     // action methods
+
+    /**
+     * Action to perform when vehicle is in the KeepLane state.
+     */
     void keepLane();
-    void changeLaneLeft();
+
+    /**
+     * Transition action to perform on the entry of ChangingLaneLeft state.
+     */
     void changeLeftEntry();
-    void changeLaneRight();
+
+    /**
+     * Action to perform when vehicle is in the ChangingLaneRight or ChangingLaneLeft states.
+     * Monitors the completion of Lane changes.
+     */
+    void changeLane();
+
+    /**
+     * Transition action to perform on the entry of ChangingLaneRight state.
+     */
     void changeRightEntry();
 
+    /**
+     * Gets the ideal frenet D Coordinate based on target lane.
+     * @return D coordinate.
+     */
     double getIdealD() {
         return m_lane * 4 + 2;
     }
+
+    /**
+     * Updates spline used for mapping trajectory with new coordinates.
+     * Uses residual previous trajectory and most resent target coordinates.
+     */
     void updateSpline();
+    double getInterval(double target_distance, double x_dist);
 public:
     Vehicle(Map map): m_state(KeepingLane), m_map(std::move(map)) {
         m_state.registerAction(KeepingLane, [this] () { keepLane();});
 
-        m_state.registerAction(ChangingLaneLeft, [this] () { changeLaneLeft();});
+        m_state.registerAction(ChangingLaneLeft, [this] () { changeLane();});
         m_state.onEntry(ChangingLaneLeft, [this] () {changeLeftEntry();});
 
 
-        m_state.registerAction(ChangingLaneRight, [this] () { changeLaneRight();});
+        m_state.registerAction(ChangingLaneRight, [this] () { changeLane();});
         m_state.onEntry(ChangingLaneRight, [this] () {changeRightEntry();});
 
         m_state.allow(KeepingLane, ChangingLaneLeft, ChangeLaneLeft);
@@ -132,6 +137,19 @@ public:
         m_state.allow(ChangingLaneRight, KeepingLane, KeepLane);
     };
     const Trajectory &getTrajectory() const {return m_trajectory;};
+
+    /**
+     * Updates the vehicle with the latest telemetry.
+     * @param x
+     * @param y
+     * @param yaw
+     * @param prev_x
+     * @param prev_y
+     * @param last_s
+     * @param last_d
+     * @param sensor_fusion
+     * @param v
+     */
     void update(double x, double y, double yaw, std::vector<double> &prev_x, std::vector<double> &prev_y, double last_s, double last_d, std::vector<std::vector<double>> sensor_fusion, double v);
 };
 #endif //PATH_PLANNING_VEHICLE_H

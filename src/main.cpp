@@ -119,7 +119,6 @@ int main() {
 
             vehicle.update(car_x, car_y, car_yaw, previous_path_x, previous_path_y, end_path_s, end_path_d, sensor_fusion, car_speed);
             auto trajectory = vehicle.getTrajectory();
-          	// TODO: define a path made up of (x,y) points that the car will visit sequentially every .02 seconds
           	msgJson["next_x"] = trajectory.getXPath();
           	msgJson["next_y"] = trajectory.getYPath();
 
