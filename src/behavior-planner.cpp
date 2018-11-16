@@ -7,77 +7,97 @@
 
 using namespace std;
 
-double BehaviorPlanner::distanceFromVehicle(DetectedVehicle detected_vehicle, double x, double y, double s, PossibleTrajectory trajectory) {
+double BehaviorPlanner::distanceFromVehicle(DetectedVehicle detected_vehicle, double s, PossibleTrajectory trajectory, int lane) {
+    const auto high_thresh = 500.;
+    const auto low_thresh = -20.;
+    const auto weight = 2;
 
-    const auto high_thresh = 50.;
-    const auto weight = 100.;
-    if (!trajectory.isInRange(detected_vehicle.d)) return 0;
+    auto min_lane = min(lane, trajectory.getLaneId());
+    auto max_lane = max(lane, trajectory.getLaneId());
 
-    auto dist = detected_vehicle.s - s;
+    auto vehicle_lane_id = getLane(detected_vehicle.d);
 
-    if (dist > high_thresh or dist < 0) return 0;
+    if (trajectory.isInRange(detected_vehicle.d) or (max_lane > vehicle_lane_id and min_lane < vehicle_lane_id)) {
+        auto dist = detected_vehicle.s - s;
 
-    cout << "Lane " << trajectory.getLaneId() << " distance: " << dist << endl;
-    auto cost = (high_thresh - dist) / high_thresh;
-    return cost * weight;
-}
+        if (dist > high_thresh or dist < low_thresh) return 0;
 
+        double cost;
 
-double BehaviorPlanner::changeLaneCost(DetectedVehicle detected_vehicle, PossibleTrajectory trajectory, int lane) {
-    const auto weight = 1.;
-    if (trajectory.getLaneId() != lane) return weight;
+        cost = (high_thresh - abs(dist)) / high_thresh;
+
+        if (dist < 20. and dist > -10.) cost *= 10000;
+
+        if (!trajectory.isInRange(detected_vehicle.d) and dist > 40) return 0;
+
+        cout << "distance cost lane : " << trajectory.getLaneId() << " vehicle lane " <<  " detected vehicle lane id " << vehicle_lane_id << " with distance: " << dist << " cost: " << cost <<endl;
+        return cost * weight;
+    }
 
     return 0;
 }
 
-double BehaviorPlanner::calculateCost(DetectedVehicle detected_vehicle, double x, double y, double s, PossibleTrajectory trajectory, int lane) {
+
+double BehaviorPlanner::changeLaneCost(DetectedVehicle detected_vehicle, PossibleTrajectory trajectory, int lane, double s) {
+    if (trajectory.getLaneId() == lane) return 0;
+
+    return .1;
+}
+
+double BehaviorPlanner::calculateCost(DetectedVehicle detected_vehicle, double s, double speed, PossibleTrajectory trajectory, int lane) {
 
     auto cost = 0.;
 
-    cost += distanceFromVehicle(detected_vehicle, x, y, s, trajectory);
-//    cout << "after distance " << cost << endl;
-    cost += changeLaneCost(detected_vehicle, trajectory, lane);
-//    cout << "after same lane distance " <<  cost << endl;
-
+    cost += distanceFromVehicle(detected_vehicle, s, trajectory, lane);
+    cost += changeLaneCost(detected_vehicle, trajectory, lane, s);
+//    cost += speedCost(detected_vehicle, trajectory, s, speed);
 
     return cost;
 }
 
-vector<TrajectoryCost> BehaviorPlanner::calculateTrajectoryCosts(std::vector<std::vector<double>> &sensor_fusion, double car_x,
-                                              double car_y, double s, int lane) {
-    for (auto c: sensor_fusion) {
+const vector<TrajectoryCost> BehaviorPlanner::calculateTrajectoryCosts(std::vector<std::vector<double>> &sensor_fusion, double s, double speed, int lane) {
+    cout << "my s: " << s << endl;
+    cout << "sensor fusion: " << endl;
+
+    for (auto & c: sensor_fusion) {
         auto id = c[0];
         auto x = c[1];
         auto y = c[2];
         auto vx = c[3];
         auto vy = c[4];
-        auto v = sqrt(pow(vx, 2) + pow(vy, 2));
+        auto v = sqrt(pow(vx, 2) + pow(vy, 2)) * 2.24;
         auto s = c[5];
         auto d = c[6];
 
-        if (d < 0. or d > 12.) continue;
+        cout << "vehicle id: " << id << " s: " << s << " v: " << v << " d: " << d << endl;
 
-        m_detected_vehicles[id].add({x, y, vx, vy, v, s,d});
+        if (d <= 0. or d >= 12.) continue;
+
+        m_detected_vehicles[id].add({x, y, v, s, d});
     }
+
+
 
     vector<TrajectoryCost> calcd_traj;
 
     for (auto &traj: m_possible_trajectories) {
-        auto cost = 0.;
+        auto cost = 0., car_in_front_dist = 1000., car_in_front_speed = 0.;
+        traj.resetSpeed();
         for(auto &kv : m_detected_vehicles) {
             auto vehicle = kv.second.getNext();
+            auto dist = vehicle.s - s;
+            if (traj.isInRange(vehicle.d) and dist > 0 and dist < car_in_front_dist) {
+                car_in_front_dist = dist;
+                car_in_front_speed = vehicle.v;
+            }
 
-            cost += calculateCost(vehicle, car_x, car_y, s, traj, lane);
-
+            cost += calculateCost(vehicle, s, speed, traj, lane);
         }
+
+        if (car_in_front_dist < 20) traj.setOveriddenSpeed(car_in_front_speed);
+        cout << "calcd override: " << traj.isOverrideSpeed() << " and cost " << cost << endl;
         calcd_traj.emplace_back(TrajectoryCost{cost, traj});
     }
-
-
-
-//    cout << "min cost: " << min_traj->first << endl;
-
-    return move(calcd_traj);
+    return calcd_traj;
 }
-
 

@@ -25,12 +25,7 @@ class Trajectory {
 private:
     std::vector<double> m_x;
     std::vector<double> m_y;
-    int points_ahead = 50;
-public:
-    void setPointsAhead(int points_ahead) {
-        Trajectory::points_ahead = points_ahead;
-    }
-
+    int points_ahead = 30;
 public:
     Trajectory() = default;
     void update(std::vector<double> &x, std::vector<double> &y, double last_s, double last_d) {
@@ -87,8 +82,11 @@ private:
     double m_x;
     double m_y;
     double m_yaw;
+    double m_v;
     double m_max_velocity{48.};
-    double m_target_velocity{10.};
+    double m_target_velocity{1.};
+    double m_overridden_velocity{0};
+    bool m_override_speed{false};
     double m_ref_x{0};
     double m_ref_y{0};
     double m_ref_theta{0};
@@ -112,7 +110,6 @@ private:
     void changeLeftEntry();
     void changeLaneRight();
     void changeRightEntry();
-
 
     double getIdealD() {
         return m_lane * 4 + 2;

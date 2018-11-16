@@ -18,19 +18,38 @@ private:
     int m_lane_id;
     double m_min_d;
     double m_max_d;
+    bool m_override_speed;
+    double m_speed;
 public:
     PossibleTrajectory() = default;
-    PossibleTrajectory(int lane_id, double min_d, double max_d): m_lane_id(lane_id), m_min_d(min_d), m_max_d(max_d) {}
+    PossibleTrajectory(int lane_id, double min_d, double max_d): m_lane_id(lane_id), m_min_d(min_d), m_max_d(max_d), m_override_speed(false), m_speed(0) {}
+    PossibleTrajectory(int lane_id, double min_d, double max_d, bool is_speed_overridden, double override_speed): m_lane_id(lane_id), m_min_d(min_d), m_max_d(max_d), m_override_speed(is_speed_overridden), m_speed(override_speed) {}
     bool isInRange(double d) const {
         return d > m_min_d and d < m_max_d;
     }
     int getLaneId() const {
         return m_lane_id;
     }
+    bool isOverrideSpeed() const {
+        return m_override_speed;
+    }
+    void setOveriddenSpeed(double speed) {
+        m_override_speed = true;
+        m_speed = speed;
+    }
+
+    double getOverriddenSpeed() const {
+        return m_speed;
+    }
+
+    void resetSpeed() {
+        m_override_speed = false;
+    }
 };
 
-struct TrajectoryCost {
+class TrajectoryCost {
 public:
+    TrajectoryCost(double cost, PossibleTrajectory& trajectory): cost(cost), trajectory(trajectory) {}
     double cost;
     PossibleTrajectory trajectory;
 };
@@ -57,8 +76,6 @@ public:
 struct DetectedVehicle {
     double x;
     double y;
-    double vx;
-    double vy;
     double v;
     double s;
     double d;
@@ -69,18 +86,27 @@ private:
     std::vector<PossibleTrajectory> m_possible_trajectories;
     std::unordered_map<double, Buffer<DetectedVehicle>> m_detected_vehicles;
 
-    double changeLaneCost(DetectedVehicle detected_vehicle, PossibleTrajectory trajectory, int lane);
-    double calculateCost(DetectedVehicle detected_vehicle, double x, double y, double s, PossibleTrajectory trajectory, int lane);
-    double distanceFromVehicle(DetectedVehicle detected_vehicle, double x, double y, double s, PossibleTrajectory trajectory);
+    /**
+     * Adds lane cost to a trajectory that changes lanes.
+     *
+     * @param detected_vehicle
+     * @param trajectory
+     * @param lane
+     * @param s
+     * @return
+     */
+    double changeLaneCost(DetectedVehicle detected_vehicle, PossibleTrajectory trajectory, int lane, double s);
+    double calculateCost(DetectedVehicle detected_vehicle, double s, double speed, PossibleTrajectory trajectory, int lane);
+    double distanceFromVehicle(DetectedVehicle detected_vehicle, double s, PossibleTrajectory trajectory, int lane);
 public:
     BehaviorPlanner() {
+        const auto speed_delta = .25;
+
         m_possible_trajectories.emplace_back(PossibleTrajectory{0, 0., 4.});
         m_possible_trajectories.emplace_back(PossibleTrajectory{1, 4., 8.});
         m_possible_trajectories.emplace_back(PossibleTrajectory{2, 8., 12.});
     }
-    std::vector<TrajectoryCost> calculateTrajectoryCosts(std::vector<std::vector<double>> &sensor_fusion, double x, double y, double s, int lane);
+    const std::vector<TrajectoryCost> calculateTrajectoryCosts(std::vector<std::vector<double>> &sensor_fusion, double s, double speed, int lane);
 };
-
-
 
 #endif //PATH_PLANNING_BEHAVIOR_PLANNER_H

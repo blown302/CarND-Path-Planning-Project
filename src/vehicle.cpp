@@ -14,14 +14,12 @@ void Vehicle::update(double x, double y, double yaw, vector<double> &prev_x, vec
     m_yaw = yaw;
     m_x = x;
     m_y = y;
+    m_v = v;
     m_sensor_fusion = std::move(sensor_fusion);
 
     auto frenet = getFrenet(x, y, rad2deg(yaw), m_map.x, m_map.y);
     m_s = frenet[0];
     m_d = frenet[1];
-
-
-//    cout << "using lane: " << m_lane << endl;
 
     m_spline_x = vector<double>();
     m_spline_y = vector<double>();
@@ -68,9 +66,9 @@ void Vehicle::update(double x, double y, double yaw, vector<double> &prev_x, vec
 
 
     auto points = (target_distance / (.02 * m_target_velocity / 2.24));
-//    m_trajectory.setPointsAhead(points);
     auto interval = (target_x / points);
     double x_temp = 0., y_temp;
+
     while (!m_trajectory.is_full()) {
         x_temp += interval;
         y_temp = m_spline(x_temp);
@@ -78,20 +76,33 @@ void Vehicle::update(double x, double y, double yaw, vector<double> &prev_x, vec
         auto x_point = (x_temp * cos(m_ref_theta) - y_temp * sin(m_ref_theta));
         auto y_point = (x_temp * sin(m_ref_theta) + y_temp * cos(m_ref_theta));
 
-//        m_ref_x += x_point;
-//        m_ref_y += y_point;
-
         m_trajectory.add(m_ref_x + x_point, m_ref_y + y_point);
-        if (m_max_velocity > m_target_velocity) {
-            m_target_velocity += .2;
-            // TODO: extract to be reused.
-            points = (target_distance / (.02 * m_target_velocity / 2.24));
-//            m_trajectory.setPointsAhead(points);
-            interval = x_dist / points;
-        }
-    }
 
-    cout << "speed: " <<  v << " with interval " << interval << endl;
+        cout << "updating trajectory with: " << m_override_speed << " speed override " << m_overridden_velocity << " target " << m_target_velocity << endl;
+
+        if (m_override_speed) {
+            if (m_overridden_velocity < m_target_velocity) {
+                m_target_velocity -= .2;
+                cout << "reducing speed to: " << m_target_velocity << endl;
+                points = (target_distance / (.02 * m_target_velocity / 2.24));
+                interval = x_dist / points;
+            } else if (m_overridden_velocity > m_target_velocity) {
+                m_target_velocity += .2;
+                points = (target_distance / (.02 * m_target_velocity / 2.24));
+                interval = x_dist / points;
+            }
+        } else {
+            if (m_max_velocity > m_target_velocity ) {
+                m_target_velocity += .2;
+                // TODO: extract to be reused.
+                points = (target_distance / (.02 * m_target_velocity / 2.24));
+                interval = x_dist / points;
+            }
+        }
+
+
+
+    }
 
     if (v > 70.) throw "too fast";
 }
@@ -128,20 +139,30 @@ void Vehicle::updateSpline() {
 void Vehicle::keepLane() {
     cout << "running state keeping lane" << endl;
 
-    auto trajectory_costs = m_planner.calculateTrajectoryCosts(m_sensor_fusion, m_prev_x, m_prev_y, m_s, m_lane);
-
+    auto trajectory_costs = m_planner.calculateTrajectoryCosts(m_sensor_fusion, m_s, m_target_velocity, m_lane);
+    cout << "return size: " << trajectory_costs.size() << endl;
     cout << "calc'd trajectories: ";
 
-    auto min = 10000., current_lane_cost = 1000.;
+    auto min = numeric_limits<double>::infinity();
     auto min_lane_id = m_lane;
+    PossibleTrajectory trajectory{};
     for (auto &t: trajectory_costs) {
+        cout << " reference cost " << t.cost << " override: " << t.trajectory.isOverrideSpeed() << endl;
         if (t.cost < min) {
             min = t.cost;
             min_lane_id = t.trajectory.getLaneId();
+            trajectory = t.trajectory;
         }
-
-        cout << "lane: " << t.trajectory.getLaneId() << " with cost: " << t.cost << " ";
     }
+
+    if (trajectory.isOverrideSpeed()) {
+        m_overridden_velocity = trajectory.getOverriddenSpeed();
+        m_override_speed = true;
+        cout << "speed overridden with: " << m_overridden_velocity << endl;
+    } else {
+        m_override_speed = false;
+    }
+    cout << "using lane: " << min_lane_id << " min: " << min << " speed: " << m_target_velocity << " is overridden " << trajectory.isOverrideSpeed() << endl;
 
     auto delta = min_lane_id - m_lane;
     if (delta > 0) {
@@ -150,7 +171,6 @@ void Vehicle::keepLane() {
         m_state.fire(ChangeLaneLeft);
     } else {
         updateSpline();
-        cout << "keeping lane: " << m_lane << " min: " << min << endl;
     }
 }
 
@@ -178,7 +198,10 @@ void Vehicle::changeLaneRight() {
 
     updateSpline();
 
-    if (m_d > ideal_d - lane_tolerance and m_d < ideal_d + lane_tolerance)
+    auto frenet = getFrenet(m_x, m_y, deg2rad(m_yaw), m_map.x, m_map.y);
+    auto d = frenet[1];
+
+    if (d > ideal_d - lane_tolerance and d < ideal_d + lane_tolerance)
         m_state.fire(KeepLane);
 }
 
@@ -196,5 +219,6 @@ void Vehicle::changeRightEntry() {
     updateSpline();
     cout << "running entry of change right state to lane: " << m_lane << endl;
 }
+
 
 

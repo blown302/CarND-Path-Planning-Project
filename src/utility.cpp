@@ -139,3 +139,19 @@ vector<double> getFrenet(double x, double y, double theta, const vector<double> 
 
     return {frenet_s,frenet_d};
 }
+
+int getLane(double d) {
+    bool found = false;
+    int lane_id = 0;
+    const auto lane_width = 4.;
+    while (!found) {
+        if (d > lane_width * lane_id and d < lane_id * lane_width + lane_width) {
+            found = true;
+        } else {
+            lane_id++;
+        }
+        if (lane_id > 3) throw "car lane cannot be found";
+
+    }
+    return lane_id;
+}

@@ -17,4 +17,5 @@ int ClosestWaypoint(double x, double y, const std::vector<double> &maps_x, const
 int NextWaypoint(double x, double y, double theta, const std::vector<double> &maps_x, const std::vector<double> &maps_y);
 std::vector<double> getFrenet(double x, double y, double theta, const std::vector<double> &maps_x, const std::vector<double> &maps_y);
 double distance(double x1, double y1, double x2, double y2);
+int getLane(double d);
 #endif //PATH_PLANNING_UTILITY_H
