@@ -88,7 +88,6 @@ int NextWaypoint(double x, double y, double theta, const vector<double> &maps_x,
             closestWaypoint = 0;
         }
     }
-    cout << "wp index: " << closestWaypoint << endl;
     return closestWaypoint;
 }
 

@@ -25,7 +25,7 @@ double BehaviorPlanner::distanceFromVehicle(DetectedVehicle detected_vehicle, do
 
         cost = (high_thresh - abs(dist)) / high_thresh;
 
-        if (dist < 20. and dist > -10.) cost *= 10000;
+        if (dist < 20. and dist > -15.) cost *= 10000;
 
         if (!trajectory.isInRange(detected_vehicle.d) and dist > 40) return 0;
 
@@ -35,7 +35,7 @@ double BehaviorPlanner::distanceFromVehicle(DetectedVehicle detected_vehicle, do
     return 0;
 }
 
-double BehaviorPlanner::changeLaneCost(DetectedVehicle detected_vehicle, PossibleTrajectory trajectory, int lane, double s) {
+double BehaviorPlanner::changeLaneCost(DetectedVehicle detected_vehicle, PossibleTrajectory trajectory, int lane) {
     if (trajectory.getLaneId() == lane) return 0;
 
     return .1;
@@ -45,7 +45,8 @@ double BehaviorPlanner::calculateCost(DetectedVehicle detected_vehicle, double s
     auto cost = 0.;
 
     cost += distanceFromVehicle(detected_vehicle, s, trajectory, lane);
-    cost += changeLaneCost(detected_vehicle, trajectory, lane, s);
+    cost += changeLaneCost(detected_vehicle, trajectory, lane);
+    cost += speedCost(detected_vehicle, trajectory);
 
     return cost;
 }
@@ -86,5 +87,13 @@ const vector<TrajectoryCost> BehaviorPlanner::calculateTrajectoryCosts(std::vect
         calcd_traj.emplace_back(TrajectoryCost{cost, traj});
     }
     return calcd_traj;
+}
+
+double BehaviorPlanner::speedCost(DetectedVehicle detected_vehicle, PossibleTrajectory trajectory) {
+    auto weight = 1.;
+    const auto target_speed = 50.;
+
+    auto cost = (target_speed - detected_vehicle.v) / target_speed;
+    return cost * weight;
 }
 

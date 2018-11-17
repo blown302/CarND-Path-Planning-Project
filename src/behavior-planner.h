@@ -94,7 +94,8 @@ private:
      * @param s
      * @return cost of changing lanes.
      */
-    double changeLaneCost(DetectedVehicle detected_vehicle, PossibleTrajectory trajectory, int lane, double s);
+    double speedCost(DetectedVehicle detected_vehicle, PossibleTrajectory trajectory);
+    double changeLaneCost(DetectedVehicle detected_vehicle, PossibleTrajectory trajectory, int lane);
     /**
      *
      * @param detected_vehicle
